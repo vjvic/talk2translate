@@ -6,10 +6,12 @@ const Translate = () => {
   const [isPlay, setIsPlay] = useState(false);
   const [transcriptText, setTranscriptText] = useState("");
 
-  const handleOnRecord = () => {
+  const handleOnRecord = async () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
+
+    await fetch("/api/translate").then((r) => console.log(r));
     recognition.onresult = async (e) => {
       console.log("event", e.results[0][0].transcript);
       const transcript = e.results[0][0].transcript;

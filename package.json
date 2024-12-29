@@ -12,6 +12,7 @@
     "@types/dom-speech-recognition": "^0.0.4",
     "lucide-react": "^0.469.0",
     "next": "15.1.3",
+    "openai": "^4.77.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
