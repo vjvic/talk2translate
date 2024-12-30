@@ -1,23 +1,89 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Mic, MicOff, ChevronDown } from "lucide-react";
 
 const Translate = () => {
-  const [isPlay, setIsPlay] = useState(false);
-  const [transcriptText, setTranscriptText] = useState("");
+  const [isPlay, setIsPlay] = useState<boolean>(false);
+  const [transcriptText, setTranscriptText] = useState<string>("");
+  const [translation, setTranslation] = useState<string>("");
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
+  const getPreferredVoice = () => {
+    const googleVoice = voices.find((voice) =>
+      voice.name.toLowerCase().includes("google")
+    );
+    const lucianaVoice = voices.find((voice) =>
+      voice.name.toLowerCase().includes("luciana")
+    );
+
+    return googleVoice || lucianaVoice || voices[0];
+  };
 
   const handleOnRecord = async () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
 
-    await fetch("/api/translate").then((r) => console.log(r));
-    recognition.onresult = async (e) => {
-      console.log("event", e.results[0][0].transcript);
+    console.log(SpeechRecognition);
+
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      console.log("Speech recognition started");
+      setIsPlay(true);
+    };
+
+    recognition.onend = () => {
+      console.log("Speech recognition stopped");
+      setIsPlay(false);
+    };
+
+    recognition.onspeechend = () => {
+      console.log("Speech ended");
+    };
+
+    recognition.onresult = async (e: SpeechRecognitionEvent) => {
       const transcript = e.results[0][0].transcript;
       setTranscriptText(transcript);
+
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: transcript, language: "tagalog" }),
+      });
+      const data = await response.json();
+      setTranslation(data.text);
+
+      const utterance = new SpeechSynthesisUtterance(data.text);
+      utterance.voice = getPreferredVoice();
+      window.speechSynthesis.speak(utterance);
     };
+
     recognition.start();
+  };
+
+  const handleStop = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsPlay(false);
+      console.log("Speech recognition manually stopped");
+    }
   };
 
   return (
@@ -50,7 +116,7 @@ const Translate = () => {
         ) : (
           <button
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 mt-1 rounded flex items-center justify-center w-full"
-            onClick={() => setIsPlay(!isPlay)}
+            onClick={handleStop}
           >
             <MicOff />
             Stop
@@ -67,7 +133,7 @@ const Translate = () => {
       <div className="shadow rounded px-2 py-4 mt-2">
         <p>
           <span className="font-semibold">Translation:</span>{" "}
-          <span className="text-gray-600">...</span>
+          <span className="text-gray-600">{translation}</span>
         </p>
       </div>
     </section>
