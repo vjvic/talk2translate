@@ -50,24 +50,17 @@ const Translate = () => {
     recognitionRef.current = recognition;
 
     recognition.onstart = () => {
-      console.log("Speech recognition started");
       setIsPlay(true);
     };
 
     recognition.onend = () => {
-      console.log("Speech recognition stopped");
       setIsPlay(false);
-    };
-
-    recognition.onspeechend = () => {
-      console.log("Speech ended");
     };
 
     recognition.onresult = async (e: SpeechRecognitionEvent) => {
       const transcript = e.results[0][0].transcript;
       setTranscriptText(transcript);
 
-      // Fetch translation after getting transcript
       const response = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,7 +88,6 @@ const Translate = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsPlay(false);
-      console.log("Speech recognition manually stopped");
     }
   }, []);
 
