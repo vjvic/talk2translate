@@ -15,8 +15,12 @@ export const POST = async (request: Request) => {
         {
           role: "system",
           content: `You will provided with a sentence your task are to:
-           detect a language of the sentence and translate it to ${language} . 
-           do not return anything other than translated sentence `,
+           - detect a language of the sentence 
+           - translate it to ${language} 
+           - pls do not return anything other than translated sentence
+           - only return the tranlated word or sentence
+           - just the translated word 
+           `,
         },
         {
           role: "user",

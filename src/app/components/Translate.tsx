@@ -1,40 +1,45 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, ChevronDown } from "lucide-react";
+import { default as languageCodes } from "../data/language-code";
+
+interface Language {
+  code: string;
+  name: string;
+}
 
 const Translate = () => {
   const [isPlay, setIsPlay] = useState<boolean>(false);
   const [transcriptText, setTranscriptText] = useState<string>("");
   const [translation, setTranslation] = useState<string>("");
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [selectedLanguage, setSelectedLanguage] =
+    useState<string>("en-English");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
+    const formattedLanguages = Object.entries(languageCodes).map(
+      ([code, name]) => ({
+        code,
+        name: name as string,
+      })
+    );
+    setLanguages(formattedLanguages);
+
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
       setVoices(availableVoices);
     };
 
     loadVoices();
+
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
 
-  const getPreferredVoice = () => {
-    const googleVoice = voices.find((voice) =>
-      voice.name.toLowerCase().includes("google")
-    );
-    const lucianaVoice = voices.find((voice) =>
-      voice.name.toLowerCase().includes("luciana")
-    );
-
-    return googleVoice || lucianaVoice || voices[0];
-  };
-
-  const handleOnRecord = async () => {
+  const handleOnRecord = useCallback(async () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    console.log(SpeechRecognition);
 
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser.");
@@ -62,42 +67,62 @@ const Translate = () => {
       const transcript = e.results[0][0].transcript;
       setTranscriptText(transcript);
 
+      // Fetch translation after getting transcript
       const response = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: transcript, language: "tagalog" }),
+        body: JSON.stringify({ text: transcript, language: selectedLanguage }),
       });
       const data = await response.json();
       setTranslation(data.text);
 
+      const preferredVoice =
+        voices.find((v) => v.lang.startsWith(selectedLanguage)) ||
+        voices.find((v) => v.lang.startsWith(selectedLanguage.split("-")[0])) ||
+        voices[0];
+
       const utterance = new SpeechSynthesisUtterance(data.text);
-      utterance.voice = getPreferredVoice();
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
       window.speechSynthesis.speak(utterance);
     };
 
     recognition.start();
-  };
+  }, [selectedLanguage, voices]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsPlay(false);
       console.log("Speech recognition manually stopped");
     }
-  };
+  }, []);
 
   return (
-    <section className="w-full lg:w-1/3  mb-6 md:mb-0 mx-auto">
+    <section className="w-full lg:w-1/3 mb-6 md:mb-0 mx-auto">
       <div>
         <div className="mb-2">
           <label className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2">
-            Languges
+            Languages
           </label>
           <div className="relative">
-            <select className="block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
-              <option>English</option>
-              <option>Tagalog</option>
-              <option>Japanese</option>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+            >
+              <option value="" disabled>
+                Select a language
+              </option>
+              {languages.map((language) => (
+                <option
+                  key={language.code}
+                  value={`${language.code}-${language.name}`}
+                >
+                  {language.name} ({language.code})
+                </option>
+              ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
               <ChevronDown />
@@ -105,23 +130,17 @@ const Translate = () => {
           </div>
         </div>
 
-        {!isPlay ? (
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mt-1 rounded flex items-center justify-center w-full"
-            onClick={handleOnRecord}
-          >
-            <Mic />
-            Speak
-          </button>
-        ) : (
-          <button
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 mt-1 rounded flex items-center justify-center w-full"
-            onClick={handleStop}
-          >
-            <MicOff />
-            Stop
-          </button>
-        )}
+        <button
+          className={`${
+            isPlay
+              ? "bg-red-500 hover:bg-red-700"
+              : "bg-blue-500 hover:bg-blue-700"
+          } text-white font-bold py-2 px-4 mt-1 rounded flex items-center justify-center w-full`}
+          onClick={isPlay ? handleStop : handleOnRecord}
+        >
+          {isPlay ? <MicOff /> : <Mic />}
+          {isPlay ? "Stop" : "Speak"}
+        </button>
       </div>
 
       <div className="shadow rounded px-2 py-4 mt-10">
