@@ -45,7 +45,7 @@ https://github.com/vjvic/victor-portfolio.git
 2.  Navigate to project directory
 
 ```bash
-cd anivault
+cd talk2translate
 
 ```
 
