@@ -38,7 +38,7 @@ Key Learnings:
 1. Clone the repository
 
 ```bash
-[https://github.com/vjvic/victor-portfolio.git](https://github.com/vjvic/talk2translate.git)
+https://github.com/vjvic/talk2translate.git
 
 ```
 
